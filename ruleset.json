@@ -1,0 +1,70 @@
+{
+  "$schema":"http://json-schema.org/draft-07/schema#",
+  "title":"Prompt Efficiency Ruleset",
+  "type":"object",
+  "required":["version","role_goal","tasks","constraints","execution_mode","termination"],
+  "properties":{
+    "version":{"type":"string","pattern":"^v\\d+(\\.\\d+)?$"},
+    "role_goal":{"type":"string"},
+    "salience":{"type":"object","properties":{
+      "use_numbered_tasks":{"type":"boolean","default":true},
+      "bold_must_do":{"type":"boolean","default":true},
+      "repeat_critical_in_checklist":{"type":"boolean","default":true}
+    },"additionalProperties":false},
+    "tasks":{"type":"array","minItems":1,"items":{
+      "type":"object","required":["id","description"],
+      "properties":{"id":{"type":"integer","minimum":1},"description":{"type":"string"},"priority":{"type":"string","enum":["P0","P1","P2"],"default":"P1"},"critical":{"type":"boolean","default":false}},
+      "additionalProperties":false
+    }},
+    "checklist":{"type":"array","items":{"type":"string"},"default":[]},
+    "constraints":{"type":"array","minItems":1,"items":{"type":"string"}},
+    "references":{"type":"array","items":{
+      "type":"object","required":["type","value"],
+      "properties":{"type":{"type":"string","enum":["link","excerpt","sample"]},"label":{"type":"string"},"value":{"type":"string"}},
+      "additionalProperties":false
+    },"default":[]},
+    "context_hygiene":{"type":"object","properties":{
+      "strip_emotional_filler":{"type":"boolean","default":true},
+      "strip_meta_notes":{"type":"boolean","default":true},
+      "keep_only_execution_relevant":{"type":"boolean","default":true}
+    },"additionalProperties":false},
+    "clarifying_questions":{"type":"object","properties":{
+      "enabled":{"type":"boolean","default":true},
+      "ask_only_if_missing":{"type":"boolean","default":true},
+      "max_questions":{"type":"integer","minimum":0,"maximum":5,"default":3},
+      "categories":{"type":"array","items":{"type":"string","enum":["tasks_priority","constraints","output_format","conflict_resolution"]},"uniqueItems":true,"default":["tasks_priority","constraints","output_format"]}
+    },"additionalProperties":false},
+    "load_management":{"type":"object","properties":{
+      "meta_buckets":{"type":"array","items":{"type":"string","enum":["retrieval","synthesis","reasoning","style","creativity","validation","generation"]},"uniqueItems":true},
+      "single_pass_threshold":{"type":"integer","minimum":1,"default":2}
+    },"additionalProperties":false},
+    "execution_mode":{"type":"object","required":["mode"],"properties":{
+      "mode":{"type":"string","enum":["single-pass","multi-pass"]},
+      "steps":{"type":"array","items":{
+        "type":"object","required":["step","name"],
+        "properties":{
+          "step":{"type":"integer","minimum":1},
+          "name":{"type":"string"},
+          "instructions":{"type":"string"},
+          "savepoint":{"type":"object","properties":{
+            "required":{"type":"boolean","default":true},
+            "format":{"type":"string","enum":["markdown_table","bullets","json","prose"]},
+            "token_cap":{"type":"integer","minimum":1,"default":500},
+            "fields":{"type":"array","items":{"type":"string"},"default":[]},
+            "consume_only_prior_savepoint":{"type":"boolean","default":true}
+          },"additionalProperties":false}
+        },"additionalProperties":false
+      },"default":[]}
+    },"additionalProperties":false},
+    "interference_control":{"type":"object","properties":{
+      "declare_priority_rule":{"type":"boolean","default":true},
+      "priority_text":{"type":"string","default":"If instructions conflict, follow task priority: P0 > P1 > P2."}
+    },"additionalProperties":false},
+    "fallback_handling":{"type":"object","properties":{
+      "allow_selective_rereference":{"type":"boolean","default":true},
+      "note":{"type":"string","default":"If a savepoint lacks material, re-reference only the missing fragment, not full source."}
+    },"additionalProperties":false},
+    "termination":{"type":"string","default":"STOP after producing the final output."}
+  },
+  "allOf":[{"if":{"properties":{"execution_mode":{"properties":{"mode":{"const":"multi-pass"}}}},"then":{"properties":{"execution_mode":{"required":["steps"]}}}}]
+}
